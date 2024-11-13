@@ -20,8 +20,8 @@ if False:  # view the data
 
 max_iters = 50
 # pick a batch size, learning rate
-batch_size = None
-learning_rate = None
+batch_size = 15
+learning_rate = 1e-2
 hidden_size = 64
 ##########################
 ##### your code here #####
@@ -57,12 +57,38 @@ for itr in range(max_iters):
 
     total_loss = 0
     avg_acc = 0
+    batches = get_random_batches(train_x, train_y, batch_size)
     for xb, yb in batches:
         # training loop can be exactly the same as q2!
         ##########################
         ##### your code here #####
+        y1 = forward(xb, params, "layer1", sigmoid)
+        probs = forward(y1, params, "output", softmax)
+        # loss
+        # be sure to add loss and accuracy to epoch totals
+        loss_b, acc_b = compute_loss_and_acc(yb, probs)
+        avg_acc += acc_b
+        total_loss += loss_b
+
+        # backward
+        delta1 = probs - yb
+        delta2 = backwards(delta1, params, "output", linear_deriv)
+        grad_X = backwards(delta2, params, "layer1", sigmoid_deriv)
+
+        # apply gradient
+        # gradients should be summed over batch samples
+        grad_W = params["grad_Wlayer1"]
+        grad_b = params["grad_blayer1"]
+        params["Wlayer1"] = params["Wlayer1"] - learning_rate * grad_W
+        params["blayer1"] = params["blayer1"] - learning_rate * grad_b
+
+        grad_W = params["grad_Woutput"]
+        grad_b = params["grad_boutput"]
+        params["Woutput"] = params["Woutput"] - learning_rate * grad_W
+        params["boutput"] = params["boutput"] - learning_rate * grad_b
+
+    avg_acc /= batch_num
         ##########################
-        pass
 
     if itr % 2 == 0:
         print(
@@ -71,7 +97,10 @@ for itr in range(max_iters):
             )
         )
 
-# record final training and validation accuracy and loss
+# for i in range(0, train_x.shape[0], 500):
+#     plt.imshow(train_x[i, :].reshape([32, 32]))
+#     plt.show()
+    # record final training and validation accuracy and loss
 h1 = forward(train_x, params, "layer1")
 probs = forward(h1, params, "output", softmax)
 loss, acc = compute_loss_and_acc(train_y, probs)
@@ -149,9 +178,16 @@ plt.show()
 # Q3.4
 confusion_matrix = np.zeros((train_y.shape[1], train_y.shape[1]))
 
+one_hot_test_pred = np.zeros_like(test_probs)
+
+pred_confmat = np.argmax(test_probs, axis=1)
+gt_confmat = np.argmax(test_y, axis=1)
+
 # compute confusion matrix
 ##########################
 ##### your code here #####
+for idx in range(test_y.shape[0]):
+    confusion_matrix[gt_confmat[idx]][pred_confmat[idx]] += 1
 ##########################
 
 

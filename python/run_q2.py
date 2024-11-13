@@ -86,26 +86,44 @@ print([_[0].shape[0] for _ in batches])
 batch_num = len(batches)
 
 # WRITE A TRAINING LOOP HERE
-max_iters = 500
+max_iters = 501
 learning_rate = 1e-3
 # with default settings, you should get loss < 35 and accuracy > 75%
 for itr in range(max_iters):
     total_loss = 0
     avg_acc = 0
+    batches = get_random_batches(x, y, 5)
     for xb, yb in batches:
         ##########################
         ##### your code here #####
         ##########################
-        pass
         # forward
-
+        y1 = forward(xb, params, "layer1", sigmoid)
+        probs = forward(y1, params, "output", softmax)
         # loss
         # be sure to add loss and accuracy to epoch totals
+        loss_b, acc_b = compute_loss_and_acc(yb, probs)
+        avg_acc += acc_b
+        total_loss += loss_b
 
         # backward
+        delta1 = probs - yb
+        delta2 = backwards(delta1, params, "output", linear_deriv)
+        grad_X = backwards(delta2, params, "layer1", sigmoid_deriv)
 
         # apply gradient
         # gradients should be summed over batch samples
+        grad_W = params["grad_Wlayer1"]
+        grad_b = params["grad_blayer1"]
+        params["Wlayer1"] = params["Wlayer1"] - learning_rate * grad_W
+        params["blayer1"] = params["blayer1"] - learning_rate * grad_b
+
+        grad_W = params["grad_Woutput"]
+        grad_b = params["grad_boutput"]
+        params["Woutput"] = params["Woutput"] - learning_rate * grad_W
+        params["boutput"] = params["boutput"] - learning_rate * grad_b
+
+    avg_acc /= batch_num
 
     if itr % 100 == 0:
         print(
@@ -148,6 +166,38 @@ for k, v in params.items():
 
     ##########################
     ##### your code here #####
+    for param_name in ['Wlayer1', 'blayer1', 'Woutput', 'boutput']:
+        param = params[param_name]
+        for row in range(param.shape[0]):
+            if len(param.shape) == 2:
+                for col in range(param.shape[1]):
+                    param[row, col] += eps
+                    h1 = forward(x, params, "layer1")
+                    probs = forward(h1, params, "output", softmax)
+                    plus_loss, _ = compute_loss_and_acc(y, probs)
+
+                    param[row, col] -= 2*eps
+                    h1 = forward(x, params, "layer1")
+                    probs = forward(h1, params, "output", softmax)
+                    minus_loss, _ = compute_loss_and_acc(y, probs)
+
+                    param[row, col] += eps
+
+                    params[f"grad_{param_name}"] = (plus_loss - minus_loss) / (2*eps)
+            else:
+                param[row] += eps
+                h1 = forward(x, params, "layer1")
+                probs = forward(h1, params, "output", softmax)
+                plus_loss, _ = compute_loss_and_acc(y, probs)
+
+                param[row] -= 2 * eps
+                h1 = forward(x, params, "layer1")
+                probs = forward(h1, params, "output", softmax)
+                minus_loss, _ = compute_loss_and_acc(y, probs)
+
+                param[row] += eps
+
+                params[f"grad_{param_name}"] = (plus_loss - minus_loss) / (2 * eps)
     ##########################
 
 total_error = 0
